@@ -3983,6 +3983,9 @@
         <FIELD NAME="requireconfirmation" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
         <FIELD NAME="servicetype" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Issuer service type, such as 'google' or 'facebook'."/>
         <FIELD NAME="loginpagename" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="performrolemapping" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Whether role mapping should be performed"/>
+        <FIELD NAME="rolemappingmappedattribute" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="The attribute that should be used for role mapping"/>
+        <FIELD NAME="rolemappingrolenameprefix" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Role name prefix to be stripped off before performing role mapping"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

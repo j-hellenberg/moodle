@@ -178,6 +178,14 @@ class issuer extends persistent {
                 'eq', \core\oauth2\issuer::SERVICEONLY);
         $mform->hideIf('acceptrisk', 'requireconfirmation', 'checked');
 
+        // Perform automatic role mapping from IDP to Moodle
+        $mform->addElement('checkbox', 'performrolemapping', get_string('performrolemapping', 'tool_oauth2'));
+        $mform->addElement('text', 'rolemappingmappedattribute', get_string('rolemappingmappedattribute', 'tool_oauth2'));
+        $mform->hideIf('rolemappingmappedattribute', 'performrolemapping', 'notchecked');
+        $mform->setType('rolemappingmappedattribute', PARAM_RAW);
+        $mform->addElement('text', 'rolemappingrolenameprefix', get_string('rolemappingrolenameprefix', 'tool_oauth2'));
+        $mform->hideIf('rolemappingrolenameprefix', 'performrolemapping', 'notchecked');
+        $mform->setType('rolemappingrolenameprefix', PARAM_RAW);
 
         if ($this->type == 'imsobv2p1' || $issuer->get('servicetype') == 'imsobv2p1'
                 || $this->type == 'moodlenet' || $issuer->get('servicetype') == 'moodlenet') {

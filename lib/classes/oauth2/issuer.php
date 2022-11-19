@@ -127,6 +127,18 @@ class issuer extends persistent {
                 'null' => NULL_ALLOWED,
                 'default' => null,
             ),
+            'performrolemapping' => array(
+                'type' => PARAM_BOOL,
+                'default' => false,
+            ),
+            'rolemappingmappedattribute' => array(
+                'type' => PARAM_ALPHANUMEXT,
+                'default' => '',
+            ),
+            'rolemappingrolenameprefix' => array(
+                'type' => PARAM_ALPHANUMEXT,
+                'default' => 'moodle_',
+            ),
         );
     }
 
@@ -267,5 +279,9 @@ class issuer extends persistent {
      */
     public function get_display_name(): string {
         return $this->get('loginpagename') ? $this->get('loginpagename') : $this->get('name');
+    }
+
+    public function is_role_mapping_enabled(): bool {
+        return $this->get('performrolemapping');
     }
 }

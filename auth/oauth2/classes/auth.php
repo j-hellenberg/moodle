@@ -621,6 +621,7 @@ class auth extends \auth_plugin_base {
 
         complete_user_login($user, $this->get_extrauserinfo());
         $this->update_picture($user);
+        $this->update_user_roles($user, $client->get_user_roles_prefix(), $client->get_user_roles());
         redirect($redirecturl);
     }
 
@@ -648,5 +649,50 @@ class auth extends \auth_plugin_base {
             'subject' => $subject,
             'message' => $message
         ];
+    }
+
+    /**
+     * Sync the roles of the user to those provided by the identity provider.
+     * @param stdClass $user A user object
+     * @param string $user_role_prefix Naming convention of the roles in the IdP. Should be stripped of before comparing the roles to the system roles of moodle.
+     * @param ?string[] $new_user_roles The current roles of the user as received by the IdP.
+     * @return void No return value, only performs side effects.
+     */
+    private function update_user_roles(stdClass $user, string $user_role_prefix, ?array $new_user_roles) {
+        if ($new_user_roles === null) {
+            // No role mapping provided from IDP
+            return;
+        }
+        $new_roles_without_prefix = [];
+        foreach ($new_user_roles as $role) {
+            // only take roles into account which start with the configured prefix
+            if (strncmp($role, $user_role_prefix, strlen($user_role_prefix)) === 0) {
+                $new_roles_without_prefix[] = substr($role, strlen($user_role_prefix));
+            }
+        }
+
+        $context = context_system::instance();
+
+        $current_user_roles = get_user_roles($context, $user->id);
+        // Unassign roles no longer present in the new roles collection
+        foreach($current_user_roles as $old_role) {
+            if (!in_array($old_role->shortname, $new_roles_without_prefix)) {
+                role_unassign($old_role->roleid, $user->id, $context->id);
+            }
+        }
+
+        // Assign new roles
+        $available_roles = get_roles_for_contextlevels(CONTEXT_SYSTEM);
+        $role_names = role_get_names($context, ROLENAME_SHORT);
+        foreach($new_roles_without_prefix as $new_role) {
+            if (!in_array($new_role, array_map(fn($x) => $x->shortname, $current_user_roles))) {
+                // Only assign the role if it is actually valid and assigneable.
+                foreach($available_roles as $role_id) {
+                    if ($new_role === $role_names[$role_id]->shortname) {
+                        role_assign($role_id, $user->id, $context->id);
+                    }
+                }
+            }
+        }
     }
 }

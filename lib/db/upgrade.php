@@ -314,6 +314,7 @@ function xmldb_main_upgrade($oldversion) {
         upgrade_main_savepoint(true, 2023031400.01);
     }
 
+
     if ($oldversion < 2023031400.02) {
         // Define table xapi_states to be created.
         $table = new xmldb_table('xapi_states');
@@ -1169,6 +1170,32 @@ function xmldb_main_upgrade($oldversion) {
 
     // Automatically generated Moodle v4.4.0 release upgrade line.
     // Put any upgrade step following this.
+
+    if ($oldversion < 2024061300.01) {
+        // Add fields to oauth2_issuer table
+        $table = new xmldb_table('oauth2_issuer');
+
+        $field = new xmldb_field('performrolemapping', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0', 'loginpagename');
+        // Conditionally launch add field performrolemapping.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('rolemappingmappedattribute', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'performrolemapping');
+        // Conditionally launch add field rolemappingmappedattribute.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('rolemappingrolenameprefix', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'rolemappingmappedattribute');
+        // Conditionally launch add field rolemappingrolenameprefix.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2024061300.01);
+    }
 
     return true;
 }

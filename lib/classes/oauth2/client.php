@@ -39,7 +39,6 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class client extends \oauth2_client {
-
     /** @var \core\oauth2\issuer $issuer */
     private $issuer;
 
@@ -536,6 +535,39 @@ class client extends \oauth2_client {
     }
 
     /**
+     * The prefix (naming convention) of the user roles in the IdP (as configured by the administrator).
+     * When performing role mapping, this prefix should be stripped of the roles received from the IdP first.
+     *
+     * @return string
+     */
+    public function get_user_roles_prefix(): string {
+        return $this->get_issuer()->get('rolemappingrolenameprefix');
+    }
+
+    /**
+     * Fetch the user roles from the user info endpoint.
+     *
+     * @return ?array Moodle user fields for the logged in user (or false if request failed)
+     * @throws moodle_exception if the response is empty after decoding it.
+     */
+    public function get_user_roles(): ?array {
+        $userinfo = $this->get_raw_userinfo();
+        if ($userinfo === false) {
+            return null;
+        }
+
+        $mapped_role = null;
+        if ($this->issuer->is_role_mapping_enabled()) {
+            $mapped_role = $this->extract_property($userinfo, $this->issuer->get('rolemappingmappedattribute'));
+            if (!$mapped_role) {
+                // Either mapped attribute is not present in $userinfo or attribute value is empty array (e.g., user has no roles)
+                $mapped_role = [];
+            }
+        }
+        return $mapped_role;
+    }
+
+    /**
      * Maps the oauth2 response to userfields.
      *
      * @param stdClass $userinfo
@@ -545,37 +577,9 @@ class client extends \oauth2_client {
         $map = $this->get_userinfo_mapping();
 
         $user = new stdClass();
+
         foreach ($map as $openidproperty => $moodleproperty) {
-            // We support nested objects via a-b-c syntax.
-            $getfunc = function($obj, $prop) use (&$getfunc) {
-                $proplist = explode('-', $prop, 2);
-
-                // The value of proplist[0] can be falsey, so just check if not set.
-                if (empty($obj) || !isset($proplist[0])) {
-                    return false;
-                }
-
-                if (preg_match('/^(.*)\[([0-9]*)\]$/', $proplist[0], $matches)
-                        && count($matches) == 3) {
-                    $property = $matches[1];
-                    $index = $matches[2];
-                    $obj = $obj->{$property}[$index] ?? null;
-                } else if (!empty($obj->{$proplist[0]})) {
-                    $obj = $obj->{$proplist[0]};
-                } else if (is_array($obj) && !empty($obj[$proplist[0]])) {
-                    $obj = $obj[$proplist[0]];
-                } else {
-                    // Nothing found after checking all possible valid combinations, return false.
-                    return false;
-                }
-
-                if (count($proplist) > 1) {
-                    return $getfunc($obj, $proplist[1]);
-                }
-                return $obj;
-            };
-
-            $resolved = $getfunc($userinfo, $openidproperty);
+            $resolved = $this->extract_property($userinfo, $openidproperty);
             if (!empty($resolved)) {
                 $user->$moodleproperty = $resolved;
             }
@@ -607,5 +611,40 @@ class client extends \oauth2_client {
         }
 
         return (array)$user;
+    }
+
+    /**
+     * Searches an object for a property. Supports nested objects via a-b-c syntax.
+     *
+     * @param stdClass|array $object
+     * @param string $property
+     * @return mixed|false the property value or false if the property does not exist on the object.
+     */
+    private function extract_property($object, string $property) {
+        $proplist = explode('-', $property, 2);
+
+        // The value of proplist[0] can be falsey, so just check if not set.
+        if (empty($object) || !isset($proplist[0])) {
+            return false;
+        }
+
+        if (preg_match('/^(.*)\[([0-9]*)\]$/', $proplist[0], $matches)
+                && count($matches) == 3) {
+            $property = $matches[1];
+            $index = $matches[2];
+            $object = $object->{$property}[$index] ?? null;
+        } else if (!empty($object->{$proplist[0]})) {
+            $object = $object->{$proplist[0]};
+        } else if (is_array($object) && !empty($object[$proplist[0]])) {
+            $object = $object[$proplist[0]];
+        } else {
+            // Nothing found after checking all possible valid combinations, return false.
+            return false;
+        }
+
+        if (count($proplist) > 1) {
+            return $this->extract_property($object, $proplist[1]);
+        }
+        return $object;
     }
 }
